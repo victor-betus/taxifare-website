@@ -207,13 +207,15 @@ components.html(AUDIO_COMPONENT, height=0)
 
 # ── WAITING: NYC street ambiance (plays while API loads) ────────────────────
 AMBIENT_JS = """
+<html><body style="margin:0;padding:0;overflow:hidden;background:transparent;">
+<audio id="amb" loop>
+  <source src="https://archive.org/download/HAZE331/02.mp3" type="audio/mpeg">
+</audio>
 <script>
 (function() {
-    var a = new Audio('https://soundbible.com/grab.php?id=298&type=mp3');
-    a.volume = 0.35;
-    a.loop   = true;
+    var a = document.getElementById('amb');
+    a.volume = 0.38;
     a.play().catch(function(){});
-    window._taxiAmbient = a;
 
     /* Explosion boom via Web Audio API */
     try {
@@ -235,6 +237,7 @@ AMBIENT_JS = """
     } catch(e) {}
 })();
 </script>
+</body></html>
 """
 
 # ── RESULT: America Fuck Yeah plays on success ──────────────────────────────
@@ -535,7 +538,7 @@ params = {
 
 if st.button("🦅 💥 CALCULATE MY FARE, AMERICA! 💥 🦅"):
     st.session_state['show_result'] = False
-    components.html(AMBIENT_JS, height=0)
+    components.html(AMBIENT_JS, height=1)
 
     with st.spinner("🦅  EAGLE IS COMPUTING… FREEDOM IS LOADING… DEMOCRACY IS CRUNCHING NUMBERS… 🦅"):
         try:
