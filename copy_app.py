@@ -3,6 +3,18 @@ import requests
 import pandas as pd
 import datetime
 
+
+st.markdown("""
+    <style>
+    .stApp {
+        background-image: url("https://www.civitatis.com/f/estados-unidos/nueva-york/galeria/carteles-publicitarios-times-square.jpg");
+        background-size: cover;
+        opacity: 0.4;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
 '''
 # TaxiFare AI
 
@@ -43,7 +55,6 @@ if st.button("Estimate"):
         data = get_data()
 
     if data:
-        st.success("Data fetched successfully!")
-        st.json(data)
+        st.success(f"Estimated fare: ${data['fare']:.2f}")
     else:
         st.error("Failed to fetch data")
