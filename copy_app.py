@@ -9,11 +9,11 @@ st.markdown("""
     .stApp {
         background-image: url("https://www.civitatis.com/f/estados-unidos/nueva-york/galeria/carteles-publicitarios-times-square.jpg");
         background-size: cover;
-        opacity: 0.4;
+        background-color: rgba(255,255,255,0.5);
+        background-blend-mode: lighten;
     }
     </style>
 """, unsafe_allow_html=True)
-
 
 '''
 # TaxiFare AI
