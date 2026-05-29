@@ -955,6 +955,270 @@ if st.session_state.get('show_result'):
         st.metric("💎 TOTAL",      f"${total:.2f}")
 
 # ════════════════════════════════════════════════════════════════════
+#  CRAZY TAXI GAME
+# ════════════════════════════════════════════════════════════════════
+if st.session_state.get('show_result'):
+    st.markdown("<hr style='border:1px solid #4a7c35; margin:16px 0;'>", unsafe_allow_html=True)
+    st.markdown("""
+    <div style="text-align:center; font-family:'Russo One',Impact,sans-serif;
+                color:#f5c518; font-size:1.5rem; letter-spacing:6px; margin-bottom:6px;">
+        🚕 CRAZY TAXI — NEW YORK CITY 🚕
+    </div>
+    <div style="text-align:center; font-family:'Share Tech Mono',monospace;
+                color:#7ab648; font-size:0.75rem; letter-spacing:3px; margin-bottom:8px;">
+        WASD / ARROW KEYS TO DRIVE · PICK UP FARES · AVOID WALLS
+    </div>
+    """, unsafe_allow_html=True)
+    components.html("""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#0a150a; display:flex; flex-direction:column; align-items:center; padding:8px; font-family:monospace; }
+canvas { border:2px solid #4a7c35; display:block; box-shadow:0 0 20px rgba(74,124,53,0.4); }
+#ui { color:#f5c518; font-size:13px; margin-top:6px; display:flex; gap:30px; letter-spacing:2px; }
+#ui span { color:#7ab648; }
+#msg { color:#ff8c00; font-size:1rem; letter-spacing:3px; min-height:22px; margin-top:4px; }
+</style>
+</head>
+<body>
+<canvas id="c" width="780" height="460"></canvas>
+<div id="ui">
+  <div><span>SPEED:</span> <b id="spd">0</b> mph</div>
+  <div><span>FARE:</span> $<b id="fare">0.00</b></div>
+  <div><span>PASSENGERS:</span> <b id="pax">0</b></div>
+  <div><span>SCORE:</span> <b id="score">0</b></div>
+</div>
+<div id="msg">FIND A 🟡 PASSENGER AND DELIVER THEM!</div>
+<script>
+const W=780, H=460, TILE=60;
+const c=document.getElementById('c'), ctx=c.getContext('2d');
+
+// NYC grid: 0=road, 1=building, 2=park
+const MAP=[
+  [1,1,1,0,1,1,1,0,1,1,1,0,1,1],
+  [1,1,1,0,1,1,1,0,1,1,1,0,1,1],
+  [1,1,1,0,1,1,1,0,2,2,2,0,1,1],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [1,1,1,0,1,1,1,0,1,1,1,0,1,1],
+  [1,1,1,0,2,2,2,0,1,1,1,0,1,1],
+  [1,1,1,0,1,1,1,0,1,1,1,0,1,1],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+];
+const ROAD_COLS=['#2a2a2a','#333333'], BLDG_COLS=['#1a2e1a','#162a16','#1e321e'];
+const PARK_COL='#1a3a0a';
+
+// Pre-compute road tiles
+const roadTiles=[];
+MAP.forEach((row,ry)=>row.forEach((cell,rx)=>{
+  if(cell===0) roadTiles.push({x:rx*TILE,y:ry*TILE});
+}));
+
+function randRoad(){
+  const t=roadTiles[Math.floor(Math.random()*roadTiles.length)];
+  return {x:t.x+TILE/2, y:t.y+TILE/2};
+}
+
+// Player
+const P={x:180,y:220,angle:0,vx:0,vy:0,speed:0,w:20,h:34,hasPax:false};
+// Passenger + destination
+let passenger=randRoad(), destination=null;
+// Other taxis (NPC)
+const npcs=[
+  {x:300,y:90,angle:Math.PI/2,speed:1.5},
+  {x:60,y:270,angle:0,speed:1.2},
+  {x:550,y:370,angle:-Math.PI/2,speed:1.8},
+];
+
+const keys={};
+document.addEventListener('keydown',e=>{keys[e.key]=true; e.preventDefault();});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+
+let fare=0, totalScore=0, paxCount=0;
+const msg=document.getElementById('msg');
+
+function tileAt(wx,wy){
+  const tx=Math.floor(wx/TILE), ty=Math.floor(wy/TILE);
+  if(tx<0||ty<0||tx>=MAP[0].length||ty>=MAP.length) return 1;
+  return MAP[ty][tx];
+}
+
+function drawMap(){
+  MAP.forEach((row,ry)=>row.forEach((cell,rx)=>{
+    const x=rx*TILE, y=ry*TILE;
+    if(cell===0){
+      ctx.fillStyle='#2d2d2d'; ctx.fillRect(x,y,TILE,TILE);
+      // Lane markings
+      ctx.strokeStyle='rgba(255,255,100,0.15)'; ctx.lineWidth=2;
+      ctx.setLineDash([12,12]);
+      if(ry>0&&ry<MAP.length-1&&MAP[ry-1][rx]===0){
+        ctx.beginPath(); ctx.moveTo(x+TILE/2,y); ctx.lineTo(x+TILE/2,y+TILE); ctx.stroke();
+      }
+      if(rx>0&&rx<MAP[0].length-1&&MAP[ry][rx-1]===0){
+        ctx.beginPath(); ctx.moveTo(x,y+TILE/2); ctx.lineTo(x+TILE,y+TILE/2); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    } else if(cell===2){
+      ctx.fillStyle=PARK_COL; ctx.fillRect(x,y,TILE,TILE);
+      ctx.fillStyle='rgba(40,80,20,0.5)';
+      for(let i=0;i<3;i++){
+        ctx.beginPath();
+        ctx.arc(x+15+i*18,y+TILE/2,8,0,Math.PI*2); ctx.fill();
+      }
+    } else {
+      const ci=(rx+ry)%BLDG_COLS.length;
+      ctx.fillStyle=BLDG_COLS[ci]; ctx.fillRect(x,y,TILE,TILE);
+      ctx.fillStyle='rgba(255,255,200,0.06)';
+      for(let r=0;r<3;r++) for(let cc=0;cc<3;cc++){
+        if(Math.random()>0.4) ctx.fillRect(x+6+cc*18,y+6+r*18,10,10);
+      }
+      ctx.strokeStyle='rgba(74,124,53,0.2)'; ctx.lineWidth=1;
+      ctx.strokeRect(x,y,TILE,TILE);
+    }
+  }));
+}
+
+function drawCar(x,y,angle,color,isPlayer){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
+  // Shadow
+  ctx.fillStyle='rgba(0,0,0,0.4)';
+  ctx.fillRect(-P.w/2+3,  -P.h/2+3, P.w, P.h);
+  // Body
+  ctx.fillStyle=color;
+  ctx.fillRect(-P.w/2, -P.h/2, P.w, P.h);
+  // Windows
+  ctx.fillStyle='#99ccff';
+  ctx.fillRect(-P.w/2+3, -P.h/2+4, P.w-6, P.h/2-4);
+  // Wheels
+  ctx.fillStyle='#111';
+  [[-P.w/2-2,-P.h/2+4],[P.w/2-2,-P.h/2+4],[-P.w/2-2,P.h/2-8],[P.w/2-2,P.h/2-8]].forEach(([wx,wy])=>{
+    ctx.fillRect(wx,wy,5,8);
+  });
+  if(isPlayer){
+    // TAXI sign
+    ctx.fillStyle='#000'; ctx.font='bold 7px monospace';
+    ctx.textAlign='center'; ctx.fillText('TAXI',0,-2);
+    // Headlights
+    ctx.fillStyle='rgba(255,255,200,0.8)';
+    ctx.beginPath(); ctx.arc(-7,-P.h/2,4,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(7,-P.h/2,4,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawPassenger(pos, isDestination){
+  ctx.save();
+  ctx.translate(pos.x, pos.y);
+  if(isDestination){
+    // Pulsing destination star
+    const pulse=0.8+0.2*Math.sin(Date.now()*0.006);
+    ctx.scale(pulse,pulse);
+    ctx.fillStyle='#ff4444';
+    ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('📍',0,0);
+    ctx.shadowColor='#ff4444'; ctx.shadowBlur=15;
+    ctx.fillStyle='rgba(255,60,60,0.3)';
+    ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2); ctx.fill();
+  } else {
+    const pulse=0.85+0.15*Math.sin(Date.now()*0.005);
+    ctx.scale(pulse,pulse);
+    ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText('🙋',0,0);
+    ctx.shadowColor='#f5c518'; ctx.shadowBlur=12;
+    ctx.fillStyle='rgba(245,197,24,0.2)';
+    ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function moveNPC(npc){
+  npc.x += Math.sin(npc.angle)*npc.speed;
+  npc.y -= Math.cos(npc.angle)*npc.speed;
+  if(tileAt(npc.x,npc.y)===1||tileAt(npc.x,npc.y)===2){
+    npc.angle += Math.PI/2*(Math.random()>0.5?1:-1);
+    npc.x -= Math.sin(npc.angle)*npc.speed*3;
+    npc.y += Math.cos(npc.angle)*npc.speed*3;
+  }
+  npc.x=Math.max(5,Math.min(W-5,npc.x));
+  npc.y=Math.max(5,Math.min(H-5,npc.y));
+}
+
+function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+
+function update(){
+  const acc=0.25, friction=0.88, maxSpd=6;
+  if(keys['ArrowLeft']||keys['a']||keys['A']) P.angle-=0.06;
+  if(keys['ArrowRight']||keys['d']||keys['D']) P.angle+=0.06;
+  if(keys['ArrowUp']||keys['w']||keys['W']) P.speed=Math.min(P.speed+acc,maxSpd);
+  if(keys['ArrowDown']||keys['s']||keys['S']) P.speed=Math.max(P.speed-acc,-maxSpd*0.5);
+  P.speed*=friction;
+
+  const nx=P.x+Math.sin(P.angle)*P.speed;
+  const ny=P.y-Math.cos(P.angle)*P.speed;
+  const tile=tileAt(nx,ny);
+  if(tile===0){ P.x=nx; P.y=ny; }
+  else { P.speed*=-0.3; } // bounce off buildings
+
+  P.x=Math.max(10,Math.min(W-10,P.x));
+  P.y=Math.max(10,Math.min(H-10,P.y));
+
+  // Pickup passenger
+  if(!P.hasPax && dist(P,passenger)<28){
+    P.hasPax=true;
+    destination=randRoad();
+    while(dist(destination,passenger)<120) destination=randRoad();
+    fare=0;
+    msg.textContent='🔴 DELIVER TO THE RED MARKER! HURRY!';
+  }
+
+  // Drop off
+  if(P.hasPax && destination && dist(P,destination)<30){
+    P.hasPax=false;
+    const earned=(fare+5).toFixed(2);
+    totalScore+=parseFloat(earned);
+    paxCount++;
+    passenger=randRoad();
+    destination=null;
+    msg.textContent=`✓ FARE COMPLETE! +$${earned} — FIND NEXT PASSENGER!`;
+    document.getElementById('fare').textContent='0.00';
+  }
+
+  if(P.hasPax) fare+=Math.abs(P.speed)*0.02;
+  npcs.forEach(moveNPC);
+
+  // Update HUD
+  document.getElementById('spd').textContent=Math.abs(Math.round(P.speed*15));
+  document.getElementById('fare').textContent=fare.toFixed(2);
+  document.getElementById('pax').textContent=paxCount;
+  document.getElementById('score').textContent=totalScore.toFixed(2);
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  drawMap();
+  if(!P.hasPax) drawPassenger(passenger,false);
+  if(P.hasPax && destination) drawPassenger(destination,true);
+  npcs.forEach(n=>drawCar(n.x,n.y,n.angle,'#cc2222',false));
+  drawCar(P.x,P.y,P.angle,'#FFD700',true);
+  // Speed lines when fast
+  if(Math.abs(P.speed)>4){
+    ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
+    for(let i=0;i<8;i++){
+      const rx=Math.random()*W, ry=Math.random()*H;
+      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+Math.sin(P.angle)*-20,ry+Math.cos(P.angle)*-20); ctx.stroke();
+    }
+  }
+}
+
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+loop();
+</script>
+</body>
+</html>
+""", height=540)
+
+# ════════════════════════════════════════════════════════════════════
 #  CHEAT CODES
 # ════════════════════════════════════════════════════════════════════
 st.markdown("<hr style='border:1px solid #4a7c35; margin:16px 0;'>", unsafe_allow_html=True)
