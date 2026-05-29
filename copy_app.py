@@ -9,14 +9,14 @@ import datetime
 ## Enter your ride details and get your fare estimate!
 '''
 
-pickup_date = st.date_input('date and time', min_value=datetime.date(2009, 1, 1),datetime.date(2019, 7, 6))
-pickup_time = st.time_input('time', datetime.time(8, 45))
+pickup_date = st.date_input('date and time', min_value=datetime.date(2009, 1, 1), value=datetime.date(2019, 7, 6))
+pickup_time = st.time_input('time', value=datetime.time(8, 45))
 pickup_datetime = datetime.datetime.combine(pickup_date, pickup_time)
-pickup_longitude = st.number_input('pickup longitude', format="%.6f",-73.950655 )
-pickup_latitude = st.number_input('pickup latitude', format="%.6f", 40.783282)
-dropoff_longitude = st.number_input('dropoff longitude', format="%.6f", -73.984365)
-dropoff_latitude = st.number_input('dropoff latitude', format="%.6f", 40.769802)
-passenger_count = st.number_input('passenger count', 2)
+pickup_longitude = st.number_input('pickup longitude', format="%.6f",value=-73.950655 )
+pickup_latitude = st.number_input('pickup latitude', format="%.6f", value=40.783282)
+dropoff_longitude = st.number_input('dropoff longitude', format="%.6f", value=-73.984365)
+dropoff_latitude = st.number_input('dropoff latitude', format="%.6f", value=40.769802)
+passenger_count = st.number_input('passenger count', value=2)
 
 
 params = {
