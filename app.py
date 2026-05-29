@@ -93,7 +93,11 @@ input:focus {
     outline: 1px dotted #B22234 !important;
 }
 
-/* BUTTON — classic 2000s 3D raised, centered */
+/* BUTTON — classic 2000s 3D raised, CENTRÉ */
+.stButton {
+    display: flex !important;
+    justify-content: center !important;
+}
 .stButton > button {
     background: linear-gradient(to bottom, #FF6666 0%, #B22234 45%, #880000 100%) !important;
     color: #FFD700 !important;
@@ -102,8 +106,9 @@ input:focus {
     letter-spacing: 4px !important;
     border: 4px outset #FF8888 !important;
     border-radius: 6px !important;
-    padding: 18px 50px !important;
-    width: 100% !important;
+    padding: 18px 60px !important;
+    width: auto !important;
+    min-width: 420px !important;
     text-shadow: 2px 2px 4px #000 !important;
     box-shadow: 4px 4px 8px rgba(0,0,0,0.4) !important;
     cursor: pointer !important;
@@ -327,8 +332,7 @@ with col_right:
                      font-size:1.1rem; letter-spacing:2px;">🟢 PICKUP LOCATION</span>
     </div>
     """, unsafe_allow_html=True)
-    pickup_longitude = st.number_input("Pickup Longitude", value=-73.950655, format="%.6f", key="p_lon")
-    pickup_latitude  = st.number_input("Pickup Latitude",  value=40.783282,  format="%.6f", key="p_lat")
+    pickup_address = st.text_input("Pickup address", value="Central Park, New York", key="p_addr", label_visibility="collapsed")
 
     st.markdown("""
     <div style="background:#ffeeee; border:2px groove #880000; padding:10px; margin:8px 0;">
@@ -336,10 +340,34 @@ with col_right:
                      font-size:1.1rem; letter-spacing:2px;">🔴 DROPOFF LOCATION</span>
     </div>
     """, unsafe_allow_html=True)
-    dropoff_longitude = st.number_input("Dropoff Longitude", value=-73.984365, format="%.6f", key="d_lon")
-    dropoff_latitude  = st.number_input("Dropoff Latitude",  value=40.769802,  format="%.6f", key="d_lat")
+    dropoff_address = st.text_input("Dropoff address", value="Times Square, New York", key="d_addr", label_visibility="collapsed")
 
 pickup_datetime = datetime.datetime.combine(pickup_date, pickup_time)
+
+@st.cache_data(ttl=86400)
+def geocode_address(address):
+    url = "https://nominatim.openstreetmap.org/search"
+    params = {"q": address, "format": "json", "limit": 1, "countrycodes": "us"}
+    headers = {"User-Agent": "TaxiFareWebApp/1.0"}
+    try:
+        r = requests.get(url, params=params, headers=headers, timeout=5)
+        if r.status_code == 200 and r.json():
+            res = r.json()[0]
+            return float(res['lat']), float(res['lon'])
+    except Exception:
+        pass
+    return None, None
+
+pickup_lat, pickup_lon   = geocode_address(pickup_address)
+dropoff_lat, dropoff_lon = geocode_address(dropoff_address)
+
+if pickup_lat is None or dropoff_lat is None:
+    st.warning("⚠️ Address not found — check spelling and try again.")
+    pickup_lat,  pickup_lon  = 40.783282, -73.950655
+    dropoff_lat, dropoff_lon = 40.769802, -73.984365
+
+pickup_latitude,   pickup_longitude  = pickup_lat,  pickup_lon
+dropoff_latitude,  dropoff_longitude = dropoff_lat, dropoff_lon
 
 # ════════════════════════════════════════════════════════════════════
 #  MAP HELPERS
@@ -493,9 +521,7 @@ params = {
     'passenger_count':   int(passenger_count),
 }
 
-_, btn_col, _ = st.columns([1, 2, 1])
-with btn_col:
-    clicked = st.button("🦅 CALCULATE MY FARE, AMERICA! 🦅")
+clicked = st.button("🦅 CALCULATE MY FARE, AMERICA! 🦅")
 
 if clicked:
     st.session_state['show_result'] = False
