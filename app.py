@@ -237,6 +237,15 @@ function toggleSound() {
         btn.classList.remove('playing');
     }
 }
+
+/* Autoplay dès le chargement */
+audio.play().then(function() {
+    on = true;
+    btn.textContent = '🔊 NYC SOUNDS ON 🚕';
+    btn.classList.add('playing');
+}).catch(function() {
+    /* Bloqué par le navigateur — le bouton reste visible comme fallback */
+});
 </script>
 </body>
 </html>
