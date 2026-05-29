@@ -17,45 +17,36 @@ CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;700&display=swap');
 
-/* STARFIELD BACKGROUND */
+/* WHITE BACKGROUND with stars stripes pattern */
 .stApp {
-    background-color: #06060f;
+    background-color: #ffffff;
     background-image:
-        radial-gradient(1px 1px at 5% 15%, #FFD700, transparent),
-        radial-gradient(1px 1px at 12% 80%, #fff, transparent),
-        radial-gradient(2px 2px at 20% 35%, #FFD700, transparent),
-        radial-gradient(1px 1px at 28% 60%, #fff, transparent),
-        radial-gradient(2px 2px at 35% 10%, #FFD700, transparent),
-        radial-gradient(1px 1px at 42% 90%, #fff, transparent),
-        radial-gradient(2px 2px at 50% 45%, #FFD700, transparent),
-        radial-gradient(1px 1px at 58% 20%, #fff, transparent),
-        radial-gradient(2px 2px at 65% 70%, #FFD700, transparent),
-        radial-gradient(1px 1px at 72% 5%, #fff, transparent),
-        radial-gradient(2px 2px at 80% 55%, #FFD700, transparent),
-        radial-gradient(1px 1px at 88% 30%, #fff, transparent),
-        radial-gradient(2px 2px at 95% 85%, #FFD700, transparent),
-        repeating-linear-gradient(0deg, transparent, transparent 80px, rgba(60,59,110,0.07) 80px, rgba(60,59,110,0.07) 81px),
-        linear-gradient(180deg, #06060f 0%, #0a000f 100%);
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 38px,
+            rgba(178,34,52,0.08) 38px,
+            rgba(178,34,52,0.08) 40px
+        );
 }
 
 /* MAIN CONTAINER */
 .main .block-container {
-    background: rgba(4, 4, 20, 0.93);
+    background: #ffffff;
     border-radius: 25px;
-    border: 4px solid #FFD700;
+    border: 5px solid #B22234;
     padding: 2rem 3rem;
     max-width: 1400px;
     box-shadow:
-        0 0 50px rgba(255,215,0,0.4),
-        0 0 100px rgba(178,34,52,0.2),
-        inset 0 0 40px rgba(255,215,0,0.03);
+        0 0 0 8px #3C3B6E,
+        0 8px 40px rgba(0,0,0,0.15);
 }
 
 /* TITLE */
 h1 {
     font-family: 'Bebas Neue', 'Impact', 'Arial Black', sans-serif !important;
     font-size: 4.2rem !important;
-    background: linear-gradient(90deg, #B22234, #FFD700, #ffffff, #FFD700, #B22234) !important;
+    background: linear-gradient(90deg, #B22234, #3C3B6E, #B22234, #3C3B6E, #B22234) !important;
     background-size: 300% 300% !important;
     -webkit-background-clip: text !important;
     -webkit-text-fill-color: transparent !important;
@@ -75,41 +66,40 @@ h1 {
 /* H2 / H3 */
 h2, h3 {
     font-family: 'Oswald', 'Impact', sans-serif !important;
-    color: #FF4500 !important;
+    color: #B22234 !important;
     letter-spacing: 5px !important;
     text-transform: uppercase !important;
-    text-shadow: 0 0 12px rgba(255,69,0,0.6) !important;
 }
 
-h3 { color: #FFD700 !important; font-size: 1.1rem !important; }
+h3 { color: #3C3B6E !important; font-size: 1.1rem !important; }
 
 /* LABELS / TEXT */
 label, p, li, .stMarkdown p {
-    color: #dde !important;
+    color: #1a1a1a !important;
     font-family: 'Oswald', 'Arial', sans-serif !important;
 }
 
 /* ALL INPUTS */
 input[type="number"], input[type="text"], input[type="time"], input[type="date"] {
-    background: rgba(10, 10, 50, 0.95) !important;
-    color: #FFD700 !important;
-    border: 2px solid rgba(60,59,110,0.9) !important;
+    background: #f8f8ff !important;
+    color: #1a1a1a !important;
+    border: 2px solid #3C3B6E !important;
     border-radius: 8px !important;
     font-family: 'Oswald', monospace !important;
     font-size: 1.1rem !important;
     transition: border-color 0.2s, box-shadow 0.2s !important;
 }
 input:focus {
-    border-color: #FFD700 !important;
-    box-shadow: 0 0 15px rgba(255,215,0,0.5) !important;
+    border-color: #B22234 !important;
+    box-shadow: 0 0 10px rgba(178,34,52,0.3) !important;
     outline: none !important;
 }
 
 /* BUTTON */
 .stButton > button {
-    background: linear-gradient(135deg, #B22234, #FF4500, #FFD700, #FF4500, #B22234) !important;
+    background: linear-gradient(135deg, #B22234, #3C3B6E, #B22234, #3C3B6E, #B22234) !important;
     background-size: 300% 300% !important;
-    color: #000 !important;
+    color: #fff !important;
     font-family: 'Bebas Neue', 'Impact', 'Arial Black', sans-serif !important;
     font-size: 2.4rem !important;
     letter-spacing: 7px !important;
@@ -117,14 +107,14 @@ input:focus {
     border-radius: 18px !important;
     padding: 22px 0 !important;
     width: 100% !important;
-    box-shadow: 0 0 35px rgba(255,215,0,0.7), 0 0 70px rgba(255,69,0,0.4) !important;
+    box-shadow: 0 4px 20px rgba(178,34,52,0.5) !important;
     animation: btn-glow 1.8s ease infinite alternate, gradient-shift 3s ease infinite !important;
     transition: transform 0.1s !important;
     cursor: pointer !important;
 }
 @keyframes btn-glow {
-    from { box-shadow: 0 0 20px rgba(255,215,0,0.4); }
-    to   { box-shadow: 0 0 70px rgba(255,215,0,1), 0 0 110px rgba(255,69,0,0.7); }
+    from { box-shadow: 0 4px 15px rgba(178,34,52,0.4); }
+    to   { box-shadow: 0 4px 40px rgba(178,34,52,0.9), 0 0 60px rgba(60,59,110,0.5); }
 }
 .stButton > button:hover  { transform: scale(1.03) !important; }
 .stButton > button:active { transform: scale(0.97) !important; }
@@ -133,11 +123,10 @@ input:focus {
 [data-testid="stMetricValue"] {
     font-family: 'Bebas Neue', Impact, sans-serif !important;
     font-size: 3.5rem !important;
-    color: #FFD700 !important;
-    text-shadow: 0 0 25px rgba(255,215,0,0.8) !important;
+    color: #B22234 !important;
 }
 [data-testid="stMetricLabel"] {
-    color: #FF4500 !important;
+    color: #3C3B6E !important;
     font-family: 'Oswald', sans-serif !important;
     letter-spacing: 3px !important;
     text-transform: uppercase !important;
@@ -145,14 +134,14 @@ input:focus {
 
 /* COLUMNS */
 [data-testid="column"] {
-    background: rgba(15, 15, 55, 0.6);
+    background: #f4f4ff;
     border-radius: 15px;
-    border: 1px solid rgba(255,215,0,0.25);
+    border: 1px solid rgba(60,59,110,0.3);
     padding: 15px !important;
 }
 
 /* SPINNER */
-.stSpinner > div { border-color: #FFD700 transparent #FFD700 transparent !important; }
+.stSpinner > div { border-color: #B22234 transparent #B22234 transparent !important; }
 
 /* HIDE STREAMLIT CHROME */
 #MainMenu { visibility: hidden; }
@@ -162,15 +151,15 @@ header    { visibility: hidden; }
 
 /* SCROLLBAR */
 ::-webkit-scrollbar       { width: 8px; }
-::-webkit-scrollbar-track { background: #06060f; }
-::-webkit-scrollbar-thumb { background: #FFD700; border-radius: 4px; }
+::-webkit-scrollbar-track { background: #f0f0f0; }
+::-webkit-scrollbar-thumb { background: #B22234; border-radius: 4px; }
 
 /* NUMBER INPUT STEPPERS */
 button[data-testid="stNumberInputStepDown"],
 button[data-testid="stNumberInputStepUp"] {
-    background: rgba(60,59,110,0.8) !important;
-    color: #FFD700 !important;
-    border: 1px solid #FFD700 !important;
+    background: #f0f0ff !important;
+    color: #3C3B6E !important;
+    border: 1px solid #3C3B6E !important;
 }
 </style>
 """
@@ -218,15 +207,20 @@ AUDIO_COMPONENT = """
 """
 components.html(AUDIO_COMPONENT, height=0)
 
-# ── EXPLOSION SOUND for the predict button ──────────────────────────────────
+# ── AMERICA FUCK YEAH + explosion on predict button ─────────────────────────
 EXPLOSION_JS = """
 <script>
 (function() {
+    /* Play America Fuck Yeah from Internet Archive */
+    var audio = new Audio('https://archive.org/download/AMERICAFKYEAHMUSICVIDEOTeamAmericaWorldPoliceTHEMESONG/AMERICA%20F-%23K%20YEAH%21%20MUSIC%20VIDEO%20-%20Team%20America%20World%20Police%20THEME%20SONG.mp3');
+    audio.volume = 0.8;
+    audio.play().catch(function() {});
+
+    /* Explosion boom via Web Audio API */
     try {
         var AC = window.AudioContext || window.webkitAudioContext;
         var ctx = new AC();
         var sr  = ctx.sampleRate;
-
         var buf  = ctx.createBuffer(1, sr * 0.55, sr);
         var data = buf.getChannelData(0);
         for (var i = 0; i < data.length; i++) {
@@ -239,19 +233,6 @@ EXPLOSION_JS = """
         gn.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
         src.connect(gn); gn.connect(ctx.destination);
         src.start();
-
-        var t = ctx.currentTime + 0.55;
-        var osc = ctx.createOscillator();
-        var g2  = ctx.createGain();
-        osc.connect(g2); g2.connect(ctx.destination);
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(900,  t);
-        osc.frequency.exponentialRampToValueAtTime(450,  t + 0.3);
-        osc.frequency.exponentialRampToValueAtTime(1100, t + 0.6);
-        osc.frequency.exponentialRampToValueAtTime(300,  t + 0.9);
-        g2.gain.setValueAtTime(0.2, t);
-        g2.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
-        osc.start(t); osc.stop(t + 0.9);
     } catch(e) {}
 })();
 </script>
@@ -276,7 +257,7 @@ st.markdown("""
     <span class="eagle-r">🦅</span>
 </div>
 
-<div style="text-align:center; color:#FFD700; font-family:'Oswald',sans-serif; font-size:1.35rem; letter-spacing:5px; margin:6px 0;">
+<div style="text-align:center; color:#3C3B6E; font-family:'Oswald',sans-serif; font-size:1.35rem; letter-spacing:5px; margin:6px 0;">
     🇺🇸 THE GREATEST · THE BOLDEST · THE MOST POWERFUL TAXI CALC IN THE KNOWN UNIVERSE 🇺🇸
 </div>
 
@@ -284,7 +265,7 @@ st.markdown("""
     <span class="boom-row" style="font-size:2.4rem;">💥 🚕 🗽 🚁 ✈️ 🦅 ✈️ 🚁 🗽 🚕 💥</span>
 </div>
 
-<div style="text-align:center; color:#FFD700; font-size:1.3rem; letter-spacing:3px; margin:4px 0;">
+<div style="text-align:center; color:#B22234; font-size:1.3rem; letter-spacing:3px; margin:4px 0;">
     ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★ ★
 </div>
 """, unsafe_allow_html=True)
@@ -293,14 +274,14 @@ st.markdown("""
 st.markdown("""
 <div style="
     text-align:center;
-    background: linear-gradient(135deg, rgba(178,34,52,0.15), rgba(60,59,110,0.4));
-    border: 2px solid rgba(255,215,0,0.4);
+    background: linear-gradient(135deg, rgba(178,34,52,0.08), rgba(60,59,110,0.1));
+    border: 2px solid #B22234;
     border-radius: 15px;
     padding: 16px;
     margin: 10px 0;
     font-family: monospace;
 ">
-<pre style="color:#FFD700; display:inline-block; text-align:left; font-size:0.95rem; line-height:1.35; margin:0;">
+<pre style="color:#B22234; display:inline-block; text-align:left; font-size:0.95rem; line-height:1.35; margin:0;">
   ╔═══════════════════════════════════════════╗
   ║   ___   _   _  _    _  ___  _   _  ___   ║
   ║  |_ _| | | | || |  | |/ _ \| | | ||_ _|  ║
@@ -435,7 +416,7 @@ st.markdown("""
 </style>
 <div style="text-align:center; margin:22px 0 10px;">
     <span class="arrow-down">👇</span>
-    <div style="color:#FFD700; font-family:'Oswald',sans-serif; font-size:1.5rem; letter-spacing:5px; margin:6px 0;">
+    <div style="color:#3C3B6E; font-family:'Oswald',sans-serif; font-size:1.5rem; letter-spacing:5px; margin:6px 0;">
         PRESS THE BUTTON · UNLEASH AMERICA
     </div>
     <span class="arrow-down">👇</span>
@@ -474,8 +455,8 @@ if st.button("🦅 💥 CALCULATE MY FARE, AMERICA! 💥 🦅"):
                 </style>
                 <div style="
                     text-align:center;
-                    background: linear-gradient(135deg, rgba(40,40,110,0.97), rgba(178,34,52,0.25));
-                    border: 5px solid #FFD700;
+                    background: linear-gradient(135deg, rgba(240,240,255,0.99), rgba(255,240,240,0.99));
+                    border: 5px solid #B22234;
                     border-radius: 28px;
                     padding: 44px 30px;
                     margin: 20px 0;
@@ -486,18 +467,17 @@ if st.button("🦅 💥 CALCULATE MY FARE, AMERICA! 💥 🦅"):
                     <div style="
                         font-family:'Bebas Neue',Impact,sans-serif;
                         font-size:3.8rem;
-                        color:#FFD700;
-                        text-shadow: 0 0 30px rgba(255,215,0,0.8), 4px 4px 0 #7a1010;
+                        color:#3C3B6E;
                         letter-spacing:8px; line-height:1;
                     ">ESTIMATED FARE</div>
                     <div style="
                         font-family:'Bebas Neue',Impact,sans-serif;
                         font-size:8.5rem;
-                        color:#00FF88;
+                        color:#B22234;
                         letter-spacing:4px; line-height:1.1;
                         animation: money-glow 1s ease infinite alternate;
                     ">${fare:.2f}</div>
-                    <div style="color:#FFD700; font-size:1.25rem; letter-spacing:5px; margin-top:18px; font-family:'Oswald',sans-serif;">
+                    <div style="color:#3C3B6E; font-size:1.25rem; letter-spacing:5px; margin-top:18px; font-family:'Oswald',sans-serif;">
                         🇺🇸 &nbsp; GOD BLESS AMERICA AND YOUR WALLET &nbsp; 🇺🇸
                     </div>
                     <div style="font-size:2.8rem; margin-top:16px;">🎆 🗽 🎆 🦅 🎆 🗽 🎆</div>
@@ -529,10 +509,10 @@ if st.button("🦅 💥 CALCULATE MY FARE, AMERICA! 💥 🦅"):
 st.markdown("---")
 st.markdown("""
 <div style="text-align:center; padding:22px 0 10px;">
-    <div style="color:#FFD700; font-family:'Oswald',sans-serif; font-size:1.4rem; letter-spacing:5px;">
+    <div style="color:#B22234; font-family:'Oswald',sans-serif; font-size:1.4rem; letter-spacing:5px;">
         ★ MADE WITH 🦅 PATRIOTISM AND 💥 MACHINE LEARNING ★
     </div>
-    <div style="color:#7777aa; font-size:0.9rem; margin-top:8px; font-family:'Oswald',sans-serif; letter-spacing:2px;">
+    <div style="color:#3C3B6E; font-size:0.9rem; margin-top:8px; font-family:'Oswald',sans-serif; letter-spacing:2px;">
         Powered by Le Wagon Data Science Bootcamp &nbsp;|&nbsp; NYC Taxifare Prediction API
     </div>
     <div style="font-size:2.2rem; margin-top:10px;">🇺🇸 &nbsp; 🚕 &nbsp; 🗽 &nbsp; 🚕 &nbsp; 🇺🇸</div>
