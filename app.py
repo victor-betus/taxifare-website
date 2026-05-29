@@ -350,59 +350,128 @@ with col_drop:
     dropoff_latitude  = st.number_input("🏁 Dropoff Latitude",  value=40.769802,  format="%.6f", key="d_lat")
 
 # ════════════════════════════════════════════════════════════════════
+#  MAP HELPERS
+# ════════════════════════════════════════════════════════════════════
+@st.cache_data(ttl=3600)
+def get_osrm_route(p_lon, p_lat, d_lon, d_lat):
+    url = (f"http://router.project-osrm.org/route/v1/driving/"
+           f"{p_lon},{p_lat};{d_lon},{d_lat}?geometries=geojson&overview=full")
+    try:
+        r = requests.get(url, timeout=6)
+        if r.status_code == 200:
+            coords = r.json()['routes'][0]['geometry']['coordinates']
+            return [[c[0], c[1]] for c in coords]
+    except Exception:
+        pass
+    return [[p_lon, p_lat], [d_lon, d_lat]]
+
+@st.cache_data(ttl=3600)
+def get_buildings(min_lat, min_lon, max_lat, max_lon):
+    query = (f"[out:json][timeout:15];"
+             f"way[\"building\"]({min_lat},{min_lon},{max_lat},{max_lon});"
+             f"out geom;")
+    try:
+        r = requests.post(
+            "https://overpass-api.de/api/interpreter",
+            data={"data": query}, timeout=20
+        )
+        buildings = []
+        for el in r.json().get('elements', []):
+            if 'geometry' not in el:
+                continue
+            coords = [[n['lon'], n['lat']] for n in el['geometry']]
+            if len(coords) < 3:
+                continue
+            tags = el.get('tags', {})
+            try:
+                height = float(tags.get('height', tags.get('building:levels', '3'))) * 3.5
+            except Exception:
+                height = 12
+            buildings.append({'polygon': coords, 'height': min(float(height), 400)})
+        return buildings
+    except Exception:
+        return []
+
+# ════════════════════════════════════════════════════════════════════
 #  MAP
 # ════════════════════════════════════════════════════════════════════
 st.markdown("---")
 st.markdown("""
 <h2 style="text-align:center; margin-bottom:4px;">🗺️ LIVE OPERATIONAL THEATER — NEW YORK CITY 🗺️</h2>
-<div style="text-align:center; color:#aaaadd; font-family:'Oswald',sans-serif; letter-spacing:3px; font-size:0.95rem; margin-bottom:12px;">
-    REAL-TIME TACTICAL OVERVIEW · CLASSIFIED ROUTE DATA
+<div style="text-align:center; color:#3C3B6E; font-family:'Oswald',sans-serif; letter-spacing:3px; font-size:0.95rem; margin-bottom:12px;">
+    REAL-TIME TACTICAL OVERVIEW · CLASSIFIED ROUTE DATA · 3D BUILDINGS ENGAGED
 </div>
 """, unsafe_allow_html=True)
 
 mid_lat = (pickup_latitude + dropoff_latitude) / 2
 mid_lon = (pickup_longitude + dropoff_longitude) / 2
 
+pad = 0.008
+bmin_lat = min(pickup_latitude,  dropoff_latitude)  - pad
+bmax_lat = max(pickup_latitude,  dropoff_latitude)  + pad
+bmin_lon = min(pickup_longitude, dropoff_longitude) - pad
+bmax_lon = max(pickup_longitude, dropoff_longitude) + pad
+
+with st.spinner("🏙️ Loading 3D buildings & street route…"):
+    route_coords = get_osrm_route(pickup_longitude, pickup_latitude, dropoff_longitude, dropoff_latitude)
+    buildings    = get_buildings(bmin_lat, bmin_lon, bmax_lat, bmax_lon)
+
+building_layer = pdk.Layer(
+    "PolygonLayer",
+    data=buildings,
+    get_polygon="polygon",
+    get_elevation="height",
+    elevation_scale=1,
+    extruded=True,
+    get_fill_color=[180, 185, 210, 200],
+    get_line_color=[120, 120, 160, 120],
+    line_width_min_pixels=1,
+    pickable=False,
+)
+
 route_layer = pdk.Layer(
-    "LineLayer",
-    data=[{"start": [pickup_longitude, pickup_latitude],
-           "end":   [dropoff_longitude, dropoff_latitude]}],
-    get_source_position="start",
-    get_target_position="end",
-    get_color=[255, 215, 0, 210],
-    get_width=7,
+    "PathLayer",
+    data=[{"path": route_coords}],
+    get_path="path",
+    get_color=[178, 34, 52, 240],
+    get_width=8,
+    width_min_pixels=4,
 )
 
 pickup_layer = pdk.Layer(
     "ScatterplotLayer",
     data=[{"position": [pickup_longitude, pickup_latitude]}],
     get_position="position",
-    get_color=[0, 255, 100, 230],
-    get_radius=220,
-    pickable=True,
+    get_color=[0, 200, 80, 255],
+    get_radius=120,
+    stroked=True,
+    line_width_min_pixels=3,
+    get_line_color=[0, 255, 100, 255],
 )
 
 dropoff_layer = pdk.Layer(
     "ScatterplotLayer",
     data=[{"position": [dropoff_longitude, dropoff_latitude]}],
     get_position="position",
-    get_color=[255, 80, 0, 230],
-    get_radius=220,
-    pickable=True,
+    get_color=[220, 30, 30, 255],
+    get_radius=120,
+    stroked=True,
+    line_width_min_pixels=3,
+    get_line_color=[255, 69, 0, 255],
 )
 
 view_state = pdk.ViewState(
     latitude=mid_lat,
     longitude=mid_lon,
-    zoom=12,
-    pitch=50,
-    bearing=15,
+    zoom=14,
+    pitch=60,
+    bearing=0,
 )
 
 deck = pdk.Deck(
-    layers=[route_layer, pickup_layer, dropoff_layer],
+    layers=[building_layer, route_layer, pickup_layer, dropoff_layer],
     initial_view_state=view_state,
-    map_style="https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+    map_style="mapbox://styles/mapbox/satellite-streets-v12",
 )
 st.pydeck_chart(deck, use_container_width=True)
 
@@ -435,7 +504,7 @@ params = {
 }
 
 if st.button("🦅 💥 CALCULATE MY FARE, AMERICA! 💥 🦅"):
-
+    st.session_state['show_result'] = False
     components.html(EXPLOSION_JS, height=0)
 
     with st.spinner("🦅  EAGLE IS COMPUTING… FREEDOM IS LOADING… DEMOCRACY IS CRUNCHING NUMBERS… 🦅"):
@@ -444,64 +513,206 @@ if st.button("🦅 💥 CALCULATE MY FARE, AMERICA! 💥 🦅"):
             if response.status_code == 200:
                 data = response.json()
                 fare = data.get('fare', data.get('fare_amount', 0))
-
-                st.balloons()
-
-                st.markdown(f"""
-                <style>
-                @keyframes result-pop {{ from {{ transform:scale(0.4); opacity:0; }} to {{ transform:scale(1); opacity:1; }} }}
-                @keyframes money-glow {{ from {{ text-shadow: 0 0 30px rgba(0,255,136,0.7), 4px 4px 0 #006644; }}
-                                         to   {{ text-shadow: 0 0 70px rgba(0,255,136,1),   4px 4px 0 #006644; }} }}
-                </style>
-                <div style="
-                    text-align:center;
-                    background: linear-gradient(135deg, rgba(240,240,255,0.99), rgba(255,240,240,0.99));
-                    border: 5px solid #B22234;
-                    border-radius: 28px;
-                    padding: 44px 30px;
-                    margin: 20px 0;
-                    box-shadow: 0 0 70px rgba(255,215,0,0.65), 0 0 140px rgba(255,69,0,0.3);
-                    animation: result-pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) forwards;
-                ">
-                    <div style="font-size:3.5rem; margin-bottom:10px;">💵 🦅 💵</div>
-                    <div style="
-                        font-family:'Bebas Neue',Impact,sans-serif;
-                        font-size:3.8rem;
-                        color:#3C3B6E;
-                        letter-spacing:8px; line-height:1;
-                    ">ESTIMATED FARE</div>
-                    <div style="
-                        font-family:'Bebas Neue',Impact,sans-serif;
-                        font-size:8.5rem;
-                        color:#B22234;
-                        letter-spacing:4px; line-height:1.1;
-                        animation: money-glow 1s ease infinite alternate;
-                    ">${fare:.2f}</div>
-                    <div style="color:#3C3B6E; font-size:1.25rem; letter-spacing:5px; margin-top:18px; font-family:'Oswald',sans-serif;">
-                        🇺🇸 &nbsp; GOD BLESS AMERICA AND YOUR WALLET &nbsp; 🇺🇸
-                    </div>
-                    <div style="font-size:2.8rem; margin-top:16px;">🎆 🗽 🎆 🦅 🎆 🗽 🎆</div>
-                </div>
-                """, unsafe_allow_html=True)
-
-                lat1 = math.radians(pickup_latitude);  lon1 = math.radians(pickup_longitude)
-                lat2 = math.radians(dropoff_latitude); lon2 = math.radians(dropoff_longitude)
-                a = math.sin((lat2-lat1)/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin((lon2-lon1)/2)**2
-                dist_km = 6371 * 2 * math.asin(math.sqrt(a))
-
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    st.metric("🗺️ DISTANCE",  f"{dist_km:.2f} km")
-                with c2:
-                    st.metric("💰 FARE",       f"${fare:.2f}")
-                with c3:
-                    label = f"{passenger_count} HERO{'S' if passenger_count > 1 else ''}"
-                    st.metric("👥 PASSENGERS", label)
-
+                st.session_state['fare']        = fare
+                st.session_state['show_result'] = True
             else:
                 st.error(f"⚠️ EAGLE FAILED TO RESPOND! STATUS CODE: {response.status_code}")
         except Exception as exc:
             st.error(f"⚠️ MISSION FAILED: {exc}")
+
+if st.session_state.get('show_result'):
+    fare = st.session_state['fare']
+
+    st.balloons()
+
+    # ── CANVAS ANIMATION: planes, flags, explosions ──────────────────
+    components.html("""
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background: transparent; overflow: hidden; width:100%; height:360px; }
+canvas { position:absolute; top:0; left:0; pointer-events:none; }
+#emojis { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; overflow:hidden; }
+@keyframes rise  { from { transform: translateY(0) scale(0.7) rotate(0deg); opacity:1; }
+                   to   { transform: translateY(-380px) scale(1.6) rotate(20deg); opacity:0; } }
+@keyframes fly   { from { transform: translateX(-80px) scaleX(1); opacity:1; }
+                   to   { transform: translateX(110vw) scaleX(1); opacity:0.9; } }
+@keyframes shake { 0%,100%{transform:scale(1) rotate(0deg);} 25%{transform:scale(1.4) rotate(-10deg);}
+                   75%{transform:scale(1.3) rotate(10deg);} }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="emojis"></div>
+<script>
+var W = window.innerWidth || 900, H = 360;
+var c = document.getElementById('c');
+c.width = W; c.height = H;
+var ctx = c.getContext('2d');
+var particles = [];
+
+var COLORS = ['#FF4500','#FFD700','#B22234','#3C3B6E','#FF69B4','#00BFFF','#FF8C00','#ADFF2F'];
+
+function boom(x, y, big) {
+    var n = big ? 80 : 45;
+    for (var i = 0; i < n; i++) {
+        var angle = (Math.PI * 2 / n) * i + Math.random() * 0.3;
+        var speed = (big ? 4 : 2) + Math.random() * (big ? 5 : 3);
+        particles.push({
+            x:x, y:y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - (big ? 1.5 : 0.5),
+            life: 1,
+            decay: 0.012 + Math.random() * 0.012,
+            color: COLORS[Math.floor(Math.random() * COLORS.length)],
+            size: (big ? 4 : 2) + Math.random() * 3,
+            trail: []
+        });
+    }
+}
+
+function frame() {
+    ctx.clearRect(0, 0, W, H);
+    particles = particles.filter(function(p) {
+        p.trail.push({x:p.x, y:p.y});
+        if (p.trail.length > 6) p.trail.shift();
+        p.x += p.vx; p.y += p.vy; p.vy += 0.06;
+        p.life -= p.decay;
+        if (p.life <= 0) return false;
+        // trail
+        for (var t = 0; t < p.trail.length; t++) {
+            ctx.beginPath();
+            ctx.arc(p.trail[t].x, p.trail[t].y, p.size * p.life * (t/p.trail.length) * 0.7, 0, Math.PI*2);
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life * (t/p.trail.length) * 0.4;
+            ctx.fill();
+        }
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.life;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        return true;
+    });
+    requestAnimationFrame(frame);
+}
+
+// Burst schedule
+var shots = [
+    [0,   W*0.2, H*0.3, true],
+    [200, W*0.8, H*0.25, true],
+    [400, W*0.5, H*0.4, true],
+    [600, W*0.35,H*0.2, false],
+    [700, W*0.65,H*0.35,false],
+    [900, W*0.1, H*0.5, true],
+    [1000,W*0.9, H*0.45,true],
+    [1200,W*0.5, H*0.15,true],
+    [1400,W*0.25,H*0.55,false],
+    [1500,W*0.75,H*0.2, false],
+    [1800,W*0.5, H*0.3, true],
+    [2000,W*0.15,H*0.3, true],
+    [2200,W*0.85,H*0.4, true],
+    [2500,W*0.4, H*0.2, true],
+    [2800,W*0.6, H*0.35,true],
+    [3000,W*0.5, H*0.25,true]
+];
+shots.forEach(function(s) {
+    setTimeout(function() { boom(s[1], s[2], s[3]); }, s[0]);
+});
+// Random after that
+setInterval(function() {
+    boom(Math.random()*W, Math.random()*H*0.7, Math.random()>0.4);
+}, 600);
+frame();
+
+// Emoji elements
+var emojiDiv = document.getElementById('emojis');
+
+var risingItems = [
+    '🇺🇸','🇺🇸','🇺🇸','🦅','🦅','💥','💥','🎆','🗽','💵','🎇','🏆','🇺🇸','💥','🦅'
+];
+risingItems.forEach(function(e, i) {
+    var el = document.createElement('div');
+    el.textContent = e;
+    el.style.cssText = 'position:absolute; font-size:2rem; bottom:-40px; left:' +
+        (3 + Math.random()*90) + '%; animation: rise ' +
+        (1.5 + Math.random()*2) + 's ease-out ' + (i * 0.18) + 's forwards;';
+    emojiDiv.appendChild(el);
+});
+
+// Planes flying across
+var planeRows = [8, 20, 35, 50, 65, 78];
+planeRows.forEach(function(top, i) {
+    var p = document.createElement('div');
+    p.textContent = '✈️';
+    p.style.cssText = 'position:absolute; font-size:2.2rem; top:' + top +
+        '%; left:-70px; animation: fly ' + (1.2 + Math.random()*0.8) +
+        's linear ' + (i * 0.35) + 's forwards;';
+    emojiDiv.appendChild(p);
+    // second wave
+    setTimeout(function() {
+        var p2 = document.createElement('div');
+        p2.textContent = '✈️';
+        p2.style.cssText = 'position:absolute; font-size:2.2rem; top:' + (top+5) +
+            '%; left:-70px; animation: fly ' + (1.3 + Math.random()*0.6) + 's linear 0s forwards;';
+        emojiDiv.appendChild(p2);
+    }, 2500);
+});
+// Big explosion emoji
+setTimeout(function() {
+    var ex = document.createElement('div');
+    ex.textContent = '💥';
+    ex.style.cssText = 'position:absolute; font-size:5rem; top:30%; left:45%; animation: shake 0.3s ease-in-out 6;';
+    emojiDiv.appendChild(ex);
+}, 1500);
+</script>
+</body>
+</html>
+""", height=370)
+
+    # ── FARE RESULT CARD ─────────────────────────────────────────────
+    lat1 = math.radians(pickup_latitude);  lon1 = math.radians(pickup_longitude)
+    lat2 = math.radians(dropoff_latitude); lon2 = math.radians(dropoff_longitude)
+    a = math.sin((lat2-lat1)/2)**2 + math.cos(lat1)*math.cos(lat2)*math.sin((lon2-lon1)/2)**2
+    dist_km = 6371 * 2 * math.asin(math.sqrt(a))
+
+    st.markdown(f"""
+    <style>
+    @keyframes result-pop {{ from {{ transform:scale(0.4); opacity:0; }} to {{ transform:scale(1); opacity:1; }} }}
+    </style>
+    <div style="
+        text-align:center;
+        background: linear-gradient(135deg, #f0f0ff, #fff0f0);
+        border: 5px solid #B22234;
+        border-radius: 28px;
+        padding: 44px 30px;
+        margin: 10px 0;
+        box-shadow: 0 8px 40px rgba(178,34,52,0.25);
+        animation: result-pop 0.5s cubic-bezier(0.175,0.885,0.32,1.275) forwards;
+    ">
+        <div style="font-size:3.5rem; margin-bottom:10px;">💵 🦅 💵</div>
+        <div style="font-family:'Bebas Neue',Impact,sans-serif; font-size:3.8rem;
+                    color:#3C3B6E; letter-spacing:8px; line-height:1;">ESTIMATED FARE</div>
+        <div style="font-family:'Bebas Neue',Impact,sans-serif; font-size:8.5rem;
+                    color:#B22234; letter-spacing:4px; line-height:1.1;">${fare:.2f}</div>
+        <div style="color:#3C3B6E; font-size:1.25rem; letter-spacing:5px; margin-top:18px; font-family:'Oswald',sans-serif;">
+            🇺🇸 &nbsp; GOD BLESS AMERICA AND YOUR WALLET &nbsp; 🇺🇸
+        </div>
+        <div style="font-size:2.8rem; margin-top:16px;">🎆 🗽 🎆 🦅 🎆 🗽 🎆</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric("🗺️ DISTANCE",  f"{dist_km:.2f} km")
+    with c2:
+        st.metric("💰 FARE",       f"${fare:.2f}")
+    with c3:
+        label = f"{passenger_count} HERO{'S' if passenger_count > 1 else ''}"
+        st.metric("👥 PASSENGERS", label)
 
 # ════════════════════════════════════════════════════════════════════
 #  FOOTER
