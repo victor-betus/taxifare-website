@@ -9,7 +9,7 @@ st.markdown("""
     .stApp {
         background-image: url("https://www.civitatis.com/f/estados-unidos/nueva-york/galeria/carteles-publicitarios-times-square.jpg");
         background-size: cover;
-        background-color: rgba(255,255,255,0.5);
+        background-color: rgba(255,255,255,0.8);
         background-blend-mode: lighten;
     }
     </style>
