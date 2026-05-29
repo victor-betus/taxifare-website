@@ -180,25 +180,68 @@ hr { border: 2px ridge #B22234 !important; margin: 12px 0 !important; }
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
-# ── NYC klaxons en boucle dès le premier clic sur la page ───────────────────
+# ── Bouton UNMUTE visible — seul moyen fiable cross-browser ─────────────────
 AUDIO_COMPONENT = """
-<html><body style="margin:0;padding:0;overflow:hidden;background:transparent;">
+<html>
+<head>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:transparent; display:flex; justify-content:center; align-items:center; height:60px; }
+#btn {
+    background: linear-gradient(to bottom, #FF6666, #B22234);
+    color: #FFD700;
+    font-family: 'Impact', 'Arial Black', sans-serif;
+    font-size: 1.1rem;
+    letter-spacing: 3px;
+    border: 3px outset #FF9999;
+    border-radius: 6px;
+    padding: 10px 28px;
+    cursor: pointer;
+    text-shadow: 1px 1px 2px #000;
+    box-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+    animation: pulse 1s ease-in-out infinite alternate;
+}
+#btn.playing {
+    background: linear-gradient(to bottom, #66AA66, #228822);
+    border-color: #99FF99;
+    animation: none;
+}
+@keyframes pulse {
+    from { box-shadow: 3px 3px 6px rgba(0,0,0,0.4), 0 0 8px rgba(255,100,100,0.5); }
+    to   { box-shadow: 3px 3px 6px rgba(0,0,0,0.4), 0 0 20px rgba(255,100,100,0.9); }
+}
+</style>
+</head>
+<body>
 <audio id="honk" loop>
   <source src="https://www.orangefreesounds.com/wp-content/uploads/2021/10/Noisy-street-car-horn-honking.mp3" type="audio/mpeg">
 </audio>
+<button id="btn" onclick="toggleSound()">🔇 CLICK TO UNMUTE NYC 🚕</button>
 <script>
-(function() {
-    var a = document.getElementById('honk');
-    a.volume = 0.4;
-    function startHonk() { a.play().catch(function(){}); }
-    // Essai immédiat puis sur premier clic
-    startHonk();
-    document.addEventListener('click', function() { a.play().catch(function(){}); }, { once: true });
-})();
+var audio = document.getElementById('honk');
+var btn   = document.getElementById('btn');
+var on    = false;
+audio.volume = 0.4;
+
+function toggleSound() {
+    if (!on) {
+        audio.play().then(function() {
+            on = true;
+            btn.textContent = '🔊 NYC SOUNDS ON 🚕';
+            btn.classList.add('playing');
+        }).catch(function(){});
+    } else {
+        audio.pause();
+        on = false;
+        btn.textContent = '🔇 CLICK TO UNMUTE NYC 🚕';
+        btn.classList.remove('playing');
+    }
+}
 </script>
-</body></html>
+</body>
+</html>
 """
-components.html(AUDIO_COMPONENT, height=1)
+components.html(AUDIO_COMPONENT, height=62)
 
 # ── NYC street ambiance (honking, traffic) while loading ────────────────────
 AMBIENT_JS = """
