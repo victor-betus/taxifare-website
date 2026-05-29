@@ -17,17 +17,15 @@ CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;700&display=swap');
 
-/* WHITE BACKGROUND with stars stripes pattern */
+/* TIMES SQUARE BACKGROUND — year 2000 vibe, low opacity */
 .stApp {
-    background-color: #ffffff;
     background-image:
-        repeating-linear-gradient(
-            0deg,
-            transparent,
-            transparent 38px,
-            rgba(178,34,52,0.08) 38px,
-            rgba(178,34,52,0.08) 40px
-        );
+        linear-gradient(rgba(255,255,255,0.88), rgba(255,255,255,0.88)),
+        url('https://upload.wikimedia.org/wikipedia/commons/3/39/NYC_-_Times_Square.JPG');
+    background-size: cover;
+    background-position: center top;
+    background-attachment: fixed;
+    background-color: #ffffff;
 }
 
 /* MAIN CONTAINER */
@@ -207,14 +205,15 @@ AUDIO_COMPONENT = """
 """
 components.html(AUDIO_COMPONENT, height=0)
 
-# ── AMERICA FUCK YEAH + explosion on predict button ─────────────────────────
-EXPLOSION_JS = """
+# ── WAITING: NYC street ambiance (plays while API loads) ────────────────────
+AMBIENT_JS = """
 <script>
 (function() {
-    /* Play America Fuck Yeah from Internet Archive */
-    var audio = new Audio('https://archive.org/download/AMERICAFKYEAHMUSICVIDEOTeamAmericaWorldPoliceTHEMESONG/AMERICA%20F-%23K%20YEAH%21%20MUSIC%20VIDEO%20-%20Team%20America%20World%20Police%20THEME%20SONG.mp3');
-    audio.volume = 0.8;
-    audio.play().catch(function() {});
+    var a = new Audio('https://soundbible.com/grab.php?id=298&type=mp3');
+    a.volume = 0.35;
+    a.loop   = true;
+    a.play().catch(function(){});
+    window._taxiAmbient = a;
 
     /* Explosion boom via Web Audio API */
     try {
@@ -229,11 +228,26 @@ EXPLOSION_JS = """
         var src = ctx.createBufferSource();
         src.buffer = buf;
         var gn = ctx.createGain();
-        gn.gain.setValueAtTime(0.7, ctx.currentTime);
+        gn.gain.setValueAtTime(0.6, ctx.currentTime);
         gn.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
         src.connect(gn); gn.connect(ctx.destination);
         src.start();
     } catch(e) {}
+})();
+</script>
+"""
+
+# ── RESULT: America Fuck Yeah plays on success ──────────────────────────────
+AMERICA_JS = """
+<script>
+(function() {
+    /* Stop ambient if still running */
+    if (window.parent && window.parent._taxiAmbient) {
+        try { window.parent._taxiAmbient.pause(); } catch(e) {}
+    }
+    var music = new Audio('https://archive.org/download/AMERICAFKYEAHMUSICVIDEOTeamAmericaWorldPoliceTHEMESONG/AMERICA%20F-%23K%20YEAH%21%20MUSIC%20VIDEO%20-%20Team%20America%20World%20Police%20THEME%20SONG.mp3');
+    music.volume = 0.85;
+    music.play().catch(function(){});
 })();
 </script>
 """
@@ -290,6 +304,18 @@ st.markdown("""
   ║        NYC  🚕  TAXI  🚕  CAB            ║
   ╚═══════════════════════════════════════════╝</pre>
 <div style="font-size:1.8rem; margin-top:6px;">🌆 🗽 🌉 🏙️ 🌆 🗽 🌉 🏙️ 🌆 🗽 🌉</div>
+</div>
+""", unsafe_allow_html=True)
+
+# NYC TAXI GIFs
+st.markdown("""
+<div style="display:flex; justify-content:center; align-items:center; gap:18px; flex-wrap:wrap; margin:16px 0;">
+    <img src="https://media.giphy.com/media/93nb6Zt16rwjGk2Y8O/giphy.gif"
+         height="180" style="border-radius:12px; border:4px solid #B22234; box-shadow:0 4px 20px rgba(178,34,52,0.4);">
+    <img src="https://media.giphy.com/media/Y70DOxH0fpUHBtOCiF/giphy.gif"
+         height="180" style="border-radius:12px; border:4px solid #3C3B6E; box-shadow:0 4px 20px rgba(60,59,110,0.4);">
+    <img src="https://media.giphy.com/media/Z9lNKlUpafy9uWELmz/giphy.gif"
+         height="180" style="border-radius:12px; border:4px solid #B22234; box-shadow:0 4px 20px rgba(178,34,52,0.4);">
 </div>
 """, unsafe_allow_html=True)
 
@@ -468,10 +494,14 @@ view_state = pdk.ViewState(
     bearing=0,
 )
 
+layers = [route_layer, pickup_layer, dropoff_layer]
+if buildings:
+    layers = [building_layer] + layers
+
 deck = pdk.Deck(
-    layers=[building_layer, route_layer, pickup_layer, dropoff_layer],
+    layers=layers,
     initial_view_state=view_state,
-    map_style="mapbox://styles/mapbox/satellite-streets-v12",
+    map_style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
 )
 st.pydeck_chart(deck, use_container_width=True)
 
@@ -505,7 +535,7 @@ params = {
 
 if st.button("🦅 💥 CALCULATE MY FARE, AMERICA! 💥 🦅"):
     st.session_state['show_result'] = False
-    components.html(EXPLOSION_JS, height=0)
+    components.html(AMBIENT_JS, height=0)
 
     with st.spinner("🦅  EAGLE IS COMPUTING… FREEDOM IS LOADING… DEMOCRACY IS CRUNCHING NUMBERS… 🦅"):
         try:
@@ -524,6 +554,7 @@ if st.session_state.get('show_result'):
     fare = st.session_state['fare']
 
     st.balloons()
+    components.html(AMERICA_JS, height=0)
 
     # ── CANVAS ANIMATION: planes, flags, explosions ──────────────────
     components.html("""
