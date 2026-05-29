@@ -94,10 +94,6 @@ input:focus {
 }
 
 /* BUTTON — classic 2000s 3D raised, CENTRÉ */
-.stButton {
-    display: flex !important;
-    justify-content: center !important;
-}
 .stButton > button {
     background: linear-gradient(to bottom, #FF6666 0%, #B22234 45%, #880000 100%) !important;
     color: #FFD700 !important;
@@ -107,8 +103,7 @@ input:focus {
     border: 4px outset #FF8888 !important;
     border-radius: 6px !important;
     padding: 18px 60px !important;
-    width: auto !important;
-    min-width: 420px !important;
+    width: 100% !important;
     text-shadow: 2px 2px 4px #000 !important;
     box-shadow: 4px 4px 8px rgba(0,0,0,0.4) !important;
     cursor: pointer !important;
@@ -481,11 +476,21 @@ dropoff_layer = pdk.Layer(
     get_line_color=[255, 69, 0, 255],
 )
 
+dlat = abs(pickup_latitude - dropoff_latitude)
+dlon = abs(pickup_longitude - dropoff_longitude)
+max_diff = max(dlat, dlon)
+if max_diff < 0.01:   auto_zoom = 15
+elif max_diff < 0.03: auto_zoom = 14
+elif max_diff < 0.07: auto_zoom = 13
+elif max_diff < 0.15: auto_zoom = 12
+elif max_diff < 0.4:  auto_zoom = 11
+else:                 auto_zoom = 10
+
 view_state = pdk.ViewState(
     latitude=mid_lat,
     longitude=mid_lon,
-    zoom=14,
-    pitch=60,
+    zoom=auto_zoom,
+    pitch=40,
     bearing=0,
 )
 
@@ -498,7 +503,7 @@ deck = pdk.Deck(
     initial_view_state=view_state,
     map_style="https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
 )
-st.pydeck_chart(deck, use_container_width=True)
+st.pydeck_chart(deck, use_container_width=True, height=550)
 
 # ════════════════════════════════════════════════════════════════════
 #  PREDICT BUTTON — centered
@@ -521,7 +526,9 @@ params = {
     'passenger_count':   int(passenger_count),
 }
 
-clicked = st.button("🦅 CALCULATE MY FARE, AMERICA! 🦅")
+_, btn_col, _ = st.columns([1, 2, 1])
+with btn_col:
+    clicked = st.button("🦅 CALCULATE MY FARE, AMERICA! 🦅", use_container_width=True)
 
 if clicked:
     st.session_state['show_result'] = False
