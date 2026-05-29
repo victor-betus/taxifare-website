@@ -4,15 +4,15 @@ import pandas as pd
 import datetime
 
 '''
-# TaxiFarel AI
+# TaxiFare AI
 
 ## Enter your ride details and get your fare estimate!
 '''
 
-pickup_date = st.date_input('date and time', min_value=datetime.date(2009, 1, 1))
+pickup_date = st.date_input('date and time', min_value=datetime.date(2009, 1, 1), )
 pickup_time = st.time_input('time')
 pickup_datetime = datetime.datetime.combine(pickup_date, pickup_time)
-pickup_longitude = st.number_input('pickup longitude', format="%.6f")
+pickup_longitude = st.number_input('pickup longitude', format="%.6f", )
 pickup_latitude = st.number_input('pickup latitude', format="%.6f")
 dropoff_longitude = st.number_input('dropoff longitude', format="%.6f")
 dropoff_latitude = st.number_input('dropoff latitude', format="%.6f")
