@@ -977,9 +977,9 @@ if st.session_state.get('show_result'):
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#0a150a; display:flex; flex-direction:column; align-items:center; padding:8px; font-family:monospace; }
 canvas { border:2px solid #4a7c35; display:block; box-shadow:0 0 20px rgba(74,124,53,0.4); }
-#ui { color:#f5c518; font-size:13px; margin-top:6px; display:flex; gap:30px; letter-spacing:2px; }
+#ui { color:#f5c518; font-size:13px; margin-top:6px; display:flex; gap:24px; letter-spacing:2px; flex-wrap:wrap; justify-content:center; }
 #ui span { color:#7ab648; }
-#msg { color:#ff8c00; font-size:1rem; letter-spacing:3px; min-height:22px; margin-top:4px; }
+#msg { color:#ff8c00; font-size:0.95rem; letter-spacing:2px; min-height:22px; margin-top:4px; text-align:center; }
 </style>
 </head>
 <body>
@@ -987,15 +987,15 @@ canvas { border:2px solid #4a7c35; display:block; box-shadow:0 0 20px rgba(74,12
 <div id="ui">
   <div><span>SPEED:</span> <b id="spd">0</b> mph</div>
   <div><span>FARE:</span> $<b id="fare">0.00</b></div>
-  <div><span>PASSENGERS:</span> <b id="pax">0</b></div>
-  <div><span>SCORE:</span> <b id="score">0</b></div>
+  <div><span>DELIVERED:</span> <b id="pax">0</b></div>
+  <div><span>TOTAL:</span> $<b id="score">0.00</b></div>
 </div>
-<div id="msg">FIND A 🟡 PASSENGER AND DELIVER THEM!</div>
+<div id="msg">FIND A 🙋 PASSENGER AND DELIVER THEM!</div>
 <script>
-const W=780, H=460, TILE=60;
-const c=document.getElementById('c'), ctx=c.getContext('2d');
+const W=780, H=460, T=60;
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
 
-// NYC grid: 0=road, 1=building, 2=park
+// 0=road  1=building  2=park
 const MAP=[
   [1,1,1,0,1,1,1,0,1,1,1,0,1,1],
   [1,1,1,0,1,1,1,0,1,1,1,0,1,1],
@@ -1006,188 +1006,152 @@ const MAP=[
   [1,1,1,0,1,1,1,0,1,1,1,0,1,1],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0],
 ];
-const ROAD_COLS=['#2a2a2a','#333333'], BLDG_COLS=['#1a2e1a','#162a16','#1e321e'];
-const PARK_COL='#1a3a0a';
+const ROWS=MAP.length, COLS=MAP[0].length;
+const BLDG=['#1a2e1a','#162a16','#1e321e'];
 
-// Pre-compute road tiles
+/* ---- road tile helpers ---- */
+const roadSet=new Set();
+MAP.forEach((row,ry)=>row.forEach((cell,rx)=>{ if(cell===0) roadSet.add(ry*100+rx); }));
+function isRoad(rx,ry){ return rx>=0&&ry>=0&&rx<COLS&&ry<ROWS&&MAP[ry][rx]===0; }
+function tileAt(wx,wy){ return isRoad(Math.floor(wx/T),Math.floor(wy/T))?0:1; }
+
 const roadTiles=[];
-MAP.forEach((row,ry)=>row.forEach((cell,rx)=>{
-  if(cell===0) roadTiles.push({x:rx*TILE,y:ry*TILE});
-}));
+roadSet.forEach(k=>{ const ry=Math.floor(k/100),rx=k%100; roadTiles.push({rx,ry,x:rx*T+T/2,y:ry*T+T/2}); });
 
-function randRoad(){
+function randRoadPos(excludePos){
+  for(let i=0;i<200;i++){
+    const t=roadTiles[Math.floor(Math.random()*roadTiles.length)];
+    if(!excludePos||Math.hypot(t.x-excludePos.x,t.y-excludePos.y)>120) return {x:t.x,y:t.y};
+  }
+  return roadTiles[0];
+}
+
+/* ---- NPC waypoint movement (always on road) ---- */
+function makeNPC(speed){
   const t=roadTiles[Math.floor(Math.random()*roadTiles.length)];
-  return {x:t.x+TILE/2, y:t.y+TILE/2};
+  return {x:t.x, y:t.y, angle:0, speed, wx:t.x, wy:t.y, rx:t.rx, ry:t.ry};
 }
 
-// Player
-const P={x:180,y:220,angle:0,vx:0,vy:0,speed:0,w:20,h:34,hasPax:false};
-// Passenger + destination
-let passenger=randRoad(), destination=null;
-// Other taxis (NPC)
-const npcs=[
-  {x:300,y:90,angle:Math.PI/2,speed:1.5},
-  {x:60,y:270,angle:0,speed:1.2},
-  {x:550,y:370,angle:-Math.PI/2,speed:1.8},
-];
-
-const keys={};
-document.addEventListener('keydown',e=>{keys[e.key]=true; e.preventDefault();});
-document.addEventListener('keyup',e=>{keys[e.key]=false;});
-
-let fare=0, totalScore=0, paxCount=0;
-const msg=document.getElementById('msg');
-
-function tileAt(wx,wy){
-  const tx=Math.floor(wx/TILE), ty=Math.floor(wy/TILE);
-  if(tx<0||ty<0||tx>=MAP[0].length||ty>=MAP.length) return 1;
-  return MAP[ty][tx];
-}
-
-function drawMap(){
-  MAP.forEach((row,ry)=>row.forEach((cell,rx)=>{
-    const x=rx*TILE, y=ry*TILE;
-    if(cell===0){
-      ctx.fillStyle='#2d2d2d'; ctx.fillRect(x,y,TILE,TILE);
-      // Lane markings
-      ctx.strokeStyle='rgba(255,255,100,0.15)'; ctx.lineWidth=2;
-      ctx.setLineDash([12,12]);
-      if(ry>0&&ry<MAP.length-1&&MAP[ry-1][rx]===0){
-        ctx.beginPath(); ctx.moveTo(x+TILE/2,y); ctx.lineTo(x+TILE/2,y+TILE); ctx.stroke();
-      }
-      if(rx>0&&rx<MAP[0].length-1&&MAP[ry][rx-1]===0){
-        ctx.beginPath(); ctx.moveTo(x,y+TILE/2); ctx.lineTo(x+TILE,y+TILE/2); ctx.stroke();
-      }
-      ctx.setLineDash([]);
-    } else if(cell===2){
-      ctx.fillStyle=PARK_COL; ctx.fillRect(x,y,TILE,TILE);
-      ctx.fillStyle='rgba(40,80,20,0.5)';
-      for(let i=0;i<3;i++){
-        ctx.beginPath();
-        ctx.arc(x+15+i*18,y+TILE/2,8,0,Math.PI*2); ctx.fill();
-      }
-    } else {
-      const ci=(rx+ry)%BLDG_COLS.length;
-      ctx.fillStyle=BLDG_COLS[ci]; ctx.fillRect(x,y,TILE,TILE);
-      ctx.fillStyle='rgba(255,255,200,0.06)';
-      for(let r=0;r<3;r++) for(let cc=0;cc<3;cc++){
-        if(Math.random()>0.4) ctx.fillRect(x+6+cc*18,y+6+r*18,10,10);
-      }
-      ctx.strokeStyle='rgba(74,124,53,0.2)'; ctx.lineWidth=1;
-      ctx.strokeRect(x,y,TILE,TILE);
-    }
-  }));
-}
-
-function drawCar(x,y,angle,color,isPlayer){
-  ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
-  // Shadow
-  ctx.fillStyle='rgba(0,0,0,0.4)';
-  ctx.fillRect(-P.w/2+3,  -P.h/2+3, P.w, P.h);
-  // Body
-  ctx.fillStyle=color;
-  ctx.fillRect(-P.w/2, -P.h/2, P.w, P.h);
-  // Windows
-  ctx.fillStyle='#99ccff';
-  ctx.fillRect(-P.w/2+3, -P.h/2+4, P.w-6, P.h/2-4);
-  // Wheels
-  ctx.fillStyle='#111';
-  [[-P.w/2-2,-P.h/2+4],[P.w/2-2,-P.h/2+4],[-P.w/2-2,P.h/2-8],[P.w/2-2,P.h/2-8]].forEach(([wx,wy])=>{
-    ctx.fillRect(wx,wy,5,8);
-  });
-  if(isPlayer){
-    // TAXI sign
-    ctx.fillStyle='#000'; ctx.font='bold 7px monospace';
-    ctx.textAlign='center'; ctx.fillText('TAXI',0,-2);
-    // Headlights
-    ctx.fillStyle='rgba(255,255,200,0.8)';
-    ctx.beginPath(); ctx.arc(-7,-P.h/2,4,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(7,-P.h/2,4,0,Math.PI*2); ctx.fill();
-  }
-  ctx.restore();
-}
-
-function drawPassenger(pos, isDestination){
-  ctx.save();
-  ctx.translate(pos.x, pos.y);
-  if(isDestination){
-    // Pulsing destination star
-    const pulse=0.8+0.2*Math.sin(Date.now()*0.006);
-    ctx.scale(pulse,pulse);
-    ctx.fillStyle='#ff4444';
-    ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('📍',0,0);
-    ctx.shadowColor='#ff4444'; ctx.shadowBlur=15;
-    ctx.fillStyle='rgba(255,60,60,0.3)';
-    ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2); ctx.fill();
-  } else {
-    const pulse=0.85+0.15*Math.sin(Date.now()*0.005);
-    ctx.scale(pulse,pulse);
-    ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText('🙋',0,0);
-    ctx.shadowColor='#f5c518'; ctx.shadowBlur=12;
-    ctx.fillStyle='rgba(245,197,24,0.2)';
-    ctx.beginPath(); ctx.arc(0,0,20,0,Math.PI*2); ctx.fill();
-  }
-  ctx.restore();
+function nextWaypoint(npc){
+  const dirs=[{dr:0,dc:1},{dr:0,dc:-1},{dr:1,dc:0},{dr:-1,dc:0}];
+  const valid=dirs.filter(d=>isRoad(npc.rx+d.dc,npc.ry+d.dr));
+  if(!valid.length) return;
+  const d=valid[Math.floor(Math.random()*valid.length)];
+  npc.rx+=d.dc; npc.ry+=d.dr;
+  npc.wx=npc.rx*T+T/2; npc.wy=npc.ry*T+T/2;
 }
 
 function moveNPC(npc){
-  npc.x += Math.sin(npc.angle)*npc.speed;
-  npc.y -= Math.cos(npc.angle)*npc.speed;
-  if(tileAt(npc.x,npc.y)===1||tileAt(npc.x,npc.y)===2){
-    npc.angle += Math.PI/2*(Math.random()>0.5?1:-1);
-    npc.x -= Math.sin(npc.angle)*npc.speed*3;
-    npc.y += Math.cos(npc.angle)*npc.speed*3;
-  }
-  npc.x=Math.max(5,Math.min(W-5,npc.x));
-  npc.y=Math.max(5,Math.min(H-5,npc.y));
+  const dx=npc.wx-npc.x, dy=npc.wy-npc.y;
+  const dist=Math.hypot(dx,dy);
+  if(dist<3){ npc.x=npc.wx; npc.y=npc.wy; nextWaypoint(npc); return; }
+  npc.angle=Math.atan2(dx,dy); // angle faces movement direction (sin/cos driving)
+  npc.x+=dx/dist*npc.speed;
+  npc.y+=dy/dist*npc.speed;
 }
 
-function dist(a,b){ return Math.hypot(a.x-b.x,a.y-b.y); }
+/* ---- Pre-render static map to offscreen canvas ---- */
+const mapCanvas=document.createElement('canvas');
+mapCanvas.width=W; mapCanvas.height=H;
+const mctx=mapCanvas.getContext('2d');
+MAP.forEach((row,ry)=>row.forEach((cell,rx)=>{
+  const x=rx*T, y=ry*T;
+  if(cell===0){
+    mctx.fillStyle='#2d2d2d'; mctx.fillRect(x,y,T,T);
+    mctx.strokeStyle='rgba(255,255,100,0.12)'; mctx.lineWidth=2; mctx.setLineDash([10,10]);
+    if(isRoad(rx,ry-1)||isRoad(rx,ry+1)){ mctx.beginPath(); mctx.moveTo(x+T/2,y); mctx.lineTo(x+T/2,y+T); mctx.stroke(); }
+    if(isRoad(rx-1,ry)||isRoad(rx+1,ry)){ mctx.beginPath(); mctx.moveTo(x,y+T/2); mctx.lineTo(x+T,y+T/2); mctx.stroke(); }
+    mctx.setLineDash([]);
+    mctx.strokeStyle='rgba(255,255,255,0.04)'; mctx.lineWidth=1; mctx.strokeRect(x,y,T,T);
+  } else if(cell===2){
+    mctx.fillStyle='#1a3a0a'; mctx.fillRect(x,y,T,T);
+    mctx.fillStyle='rgba(50,100,20,0.6)';
+    for(let i=0;i<3;i++){ mctx.beginPath(); mctx.arc(x+14+i*18,y+T/2,9,0,Math.PI*2); mctx.fill(); }
+  } else {
+    mctx.fillStyle=BLDG[(rx+ry)%3]; mctx.fillRect(x,y,T,T);
+    // windows (static, no random flicker)
+    mctx.fillStyle='rgba(255,255,180,0.12)';
+    for(let r=0;r<3;r++) for(let c=0;c<3;c++) mctx.fillRect(x+7+c*17,y+7+r*17,11,11);
+    mctx.strokeStyle='rgba(74,124,53,0.15)'; mctx.lineWidth=1; mctx.strokeRect(x,y,T,T);
+  }
+}));
 
+/* ---- Game state ---- */
+const startTile=roadTiles[0];
+const P={x:startTile.x, y:startTile.y, angle:0, speed:0, hasPax:false};
+const npcs=[makeNPC(1.6), makeNPC(1.3), makeNPC(2.0), makeNPC(1.1)];
+let passenger=randRoadPos(P), destination=null;
+let fare=0, totalScore=0, paxCount=0;
+const msg=document.getElementById('msg');
+
+const keys={};
+document.addEventListener('keydown',e=>{ keys[e.key]=true; e.preventDefault(); });
+document.addEventListener('keyup',e=>{ keys[e.key]=false; });
+
+/* ---- Draw helpers ---- */
+function drawCar(x,y,angle,col,isPlayer){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(angle);
+  ctx.fillStyle='rgba(0,0,0,0.35)'; ctx.fillRect(-9,  -15+2, 18, 30);
+  ctx.fillStyle=col; ctx.fillRect(-9,-15,18,30);
+  ctx.fillStyle='#7ab9e8'; ctx.fillRect(-7,-11,14,12);
+  ctx.fillStyle='#111';
+  [[-12,-10],[ 9,-10],[-12,8],[9,8]].forEach(([wx,wy])=>ctx.fillRect(wx,wy,5,8));
+  if(isPlayer){
+    ctx.fillStyle='#000'; ctx.font='bold 6px monospace'; ctx.textAlign='center';
+    ctx.fillText('TAXI',0,0);
+    ctx.fillStyle='rgba(255,255,180,0.9)';
+    ctx.beginPath(); ctx.arc(-6,-16,4,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(6,-16,4,0,Math.PI*2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function drawBlip(pos, isTarget){
+  ctx.save(); ctx.translate(pos.x, pos.y);
+  const p=0.8+0.2*Math.sin(Date.now()*0.006);
+  ctx.scale(p,p);
+  ctx.font='22px serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowBlur=14;
+  if(isTarget){ ctx.shadowColor='#ff4444'; ctx.fillText('📍',0,0); }
+  else         { ctx.shadowColor='#f5c518'; ctx.fillText('🙋',0,0); }
+  ctx.shadowBlur=0;
+  ctx.restore();
+}
+
+/* ---- Main loop ---- */
 function update(){
-  const acc=0.25, friction=0.88, maxSpd=6;
-  if(keys['ArrowLeft']||keys['a']||keys['A']) P.angle-=0.06;
-  if(keys['ArrowRight']||keys['d']||keys['D']) P.angle+=0.06;
-  if(keys['ArrowUp']||keys['w']||keys['W']) P.speed=Math.min(P.speed+acc,maxSpd);
-  if(keys['ArrowDown']||keys['s']||keys['S']) P.speed=Math.max(P.speed-acc,-maxSpd*0.5);
-  P.speed*=friction;
+  const maxSpd=6, acc=0.25, fric=0.88;
+  if(keys['ArrowLeft']||keys['a']||keys['A']) P.angle-=0.065;
+  if(keys['ArrowRight']||keys['d']||keys['D']) P.angle+=0.065;
+  if(keys['ArrowUp']||keys['w']||keys['W'])    P.speed=Math.min(P.speed+acc, maxSpd);
+  if(keys['ArrowDown']||keys['s']||keys['S'])  P.speed=Math.max(P.speed-acc,-maxSpd*0.4);
+  P.speed*=fric;
 
   const nx=P.x+Math.sin(P.angle)*P.speed;
   const ny=P.y-Math.cos(P.angle)*P.speed;
-  const tile=tileAt(nx,ny);
-  if(tile===0){ P.x=nx; P.y=ny; }
-  else { P.speed*=-0.3; } // bounce off buildings
+  if(tileAt(nx,ny)===0){ P.x=nx; P.y=ny; }
+  else { P.speed*=-0.25; }
+  P.x=Math.max(5,Math.min(W-5,P.x)); P.y=Math.max(5,Math.min(H-5,P.y));
 
-  P.x=Math.max(10,Math.min(W-10,P.x));
-  P.y=Math.max(10,Math.min(H-10,P.y));
-
-  // Pickup passenger
-  if(!P.hasPax && dist(P,passenger)<28){
-    P.hasPax=true;
-    destination=randRoad();
-    while(dist(destination,passenger)<120) destination=randRoad();
-    fare=0;
-    msg.textContent='🔴 DELIVER TO THE RED MARKER! HURRY!';
-  }
-
-  // Drop off
-  if(P.hasPax && destination && dist(P,destination)<30){
-    P.hasPax=false;
-    const earned=(fare+5).toFixed(2);
-    totalScore+=parseFloat(earned);
-    paxCount++;
-    passenger=randRoad();
-    destination=null;
-    msg.textContent=`✓ FARE COMPLETE! +$${earned} — FIND NEXT PASSENGER!`;
-    document.getElementById('fare').textContent='0.00';
-  }
-
-  if(P.hasPax) fare+=Math.abs(P.speed)*0.02;
   npcs.forEach(moveNPC);
 
-  // Update HUD
+  // Pickup
+  if(!P.hasPax && Math.hypot(P.x-passenger.x, P.y-passenger.y)<28){
+    P.hasPax=true; fare=0;
+    destination=randRoadPos(passenger);
+    msg.textContent='🔴 DELIVER TO THE RED MARKER! HURRY!';
+  }
+  // Dropoff
+  if(P.hasPax && destination && Math.hypot(P.x-destination.x, P.y-destination.y)<30){
+    P.hasPax=false;
+    const earned=(fare+5).toFixed(2);
+    totalScore+=parseFloat(earned); paxCount++;
+    passenger=randRoadPos(null); destination=null; fare=0;
+    msg.textContent='✓ FARE COMPLETE! +$'+earned+' — FIND NEXT PASSENGER!';
+    document.getElementById('fare').textContent='0.00';
+  }
+  if(P.hasPax) fare+=Math.abs(P.speed)*0.018;
+
   document.getElementById('spd').textContent=Math.abs(Math.round(P.speed*15));
   document.getElementById('fare').textContent=fare.toFixed(2);
   document.getElementById('pax').textContent=paxCount;
@@ -1195,18 +1159,18 @@ function update(){
 }
 
 function draw(){
-  ctx.clearRect(0,0,W,H);
-  drawMap();
-  if(!P.hasPax) drawPassenger(passenger,false);
-  if(P.hasPax && destination) drawPassenger(destination,true);
+  ctx.drawImage(mapCanvas,0,0);
+  if(!P.hasPax) drawBlip(passenger,false);
+  if(P.hasPax&&destination) drawBlip(destination,true);
   npcs.forEach(n=>drawCar(n.x,n.y,n.angle,'#cc2222',false));
   drawCar(P.x,P.y,P.angle,'#FFD700',true);
-  // Speed lines when fast
-  if(Math.abs(P.speed)>4){
-    ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1;
-    for(let i=0;i<8;i++){
+  // Speed blur
+  if(Math.abs(P.speed)>4.5){
+    ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1;
+    for(let i=0;i<6;i++){
       const rx=Math.random()*W, ry=Math.random()*H;
-      ctx.beginPath(); ctx.moveTo(rx,ry); ctx.lineTo(rx+Math.sin(P.angle)*-20,ry+Math.cos(P.angle)*-20); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(rx,ry);
+      ctx.lineTo(rx-Math.sin(P.angle)*18,ry+Math.cos(P.angle)*18); ctx.stroke();
     }
   }
 }
