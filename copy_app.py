@@ -5,19 +5,10 @@ import datetime
 
 '''
 # TaxiFarel AI
+
+## Enter your ride and get the price of your ride !
 '''
 
-'''
-## Here we would like to add some controllers in order to ask the user to select the parameters of the ride
-
-1. Let's ask for:
-- date and time
-- pickup longitude
-- pickup latitude
-- dropoff longitude
-- dropoff latitude
-- passenger count
-'''
 pickup_date = st.date_input('date and time', min_value=datetime.date(2009, 1, 1))
 pickup_time = st.time_input('time')
 pickup_datetime = datetime.datetime.combine(pickup_date, pickup_time)
@@ -46,8 +37,8 @@ def get_data():
     return response.json() if response.status_code == 200 else None
 
 
-st.title("API Data Fetcher")
-if st.button("Fetch Data"):
+st.title("Obtenir le prix de ma course")
+if st.button("Obtenir le prix de ma course"):
     with st.spinner("Loading..."):
         data = get_data()
 
