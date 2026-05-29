@@ -180,33 +180,25 @@ hr { border: 2px ridge #B22234 !important; margin: 12px 0 !important; }
 """
 st.markdown(CSS, unsafe_allow_html=True)
 
-# ── Eagle screech on first click ────────────────────────────────────────────
+# ── NYC klaxons en boucle dès le premier clic sur la page ───────────────────
 AUDIO_COMPONENT = """
+<html><body style="margin:0;padding:0;overflow:hidden;background:transparent;">
+<audio id="honk" loop>
+  <source src="https://www.orangefreesounds.com/wp-content/uploads/2021/10/Noisy-street-car-horn-honking.mp3" type="audio/mpeg">
+</audio>
 <script>
 (function() {
-    var played = false;
-    function eagleScreech() {
-        if (played) return; played = true;
-        try {
-            var AC = window.AudioContext || window.webkitAudioContext;
-            var ctx = new AC(); var t = ctx.currentTime;
-            var osc = ctx.createOscillator(); var g = ctx.createGain();
-            osc.connect(g); g.connect(ctx.destination);
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(1100, t);
-            osc.frequency.exponentialRampToValueAtTime(550, t+0.35);
-            osc.frequency.exponentialRampToValueAtTime(1350, t+0.70);
-            osc.frequency.exponentialRampToValueAtTime(350, t+1.10);
-            g.gain.setValueAtTime(0.18, t);
-            g.gain.exponentialRampToValueAtTime(0.001, t+1.1);
-            osc.start(t); osc.stop(t+1.1);
-        } catch(e) {}
-    }
-    document.addEventListener('click', eagleScreech, { once: true });
+    var a = document.getElementById('honk');
+    a.volume = 0.4;
+    function startHonk() { a.play().catch(function(){}); }
+    // Essai immédiat puis sur premier clic
+    startHonk();
+    document.addEventListener('click', function() { a.play().catch(function(){}); }, { once: true });
 })();
 </script>
+</body></html>
 """
-components.html(AUDIO_COMPONENT, height=0)
+components.html(AUDIO_COMPONENT, height=1)
 
 # ── NYC street ambiance (honking, traffic) while loading ────────────────────
 AMBIENT_JS = """
@@ -507,7 +499,7 @@ with btn_col:
 
 if clicked:
     st.session_state['show_result'] = False
-    components.html(AMBIENT_JS, height=1)
+    components.html(AMERICA_JS, height=1)
     with st.spinner("🦅 EAGLE IS COMPUTING… FREEDOM IS LOADING… 🦅"):
         try:
             response = requests.get(url, params=params, timeout=10)
@@ -528,7 +520,6 @@ if st.session_state.get('show_result'):
     fare = st.session_state['fare']
 
     st.balloons()
-    components.html(AMERICA_JS, height=1)
 
     # Canvas fireworks animation
     components.html("""
