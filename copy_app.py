@@ -6,7 +6,7 @@ import datetime
 '''
 # TaxiFarel AI
 
-## Enter your ride and get the price of your ride !
+## Enter your ride details and get your fare estimate!
 '''
 
 pickup_date = st.date_input('date and time', min_value=datetime.date(2009, 1, 1))
@@ -37,8 +37,8 @@ def get_data():
     return response.json() if response.status_code == 200 else None
 
 
-st.title("Obtenir le prix de ma course")
-if st.button("Obtenir le prix de ma course"):
+st.title("Get your fare estimate !")
+if st.button("Estimate"):
     with st.spinner("Loading..."):
         data = get_data()
 
